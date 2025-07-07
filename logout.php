@@ -24,6 +24,6 @@ session_destroy();
 
 // Redireciona para a página de login
 $base = '/rendis/'; // Certifique-se de que esta variável $base corresponde à do seu template_start.php
-header('Location: ' . $base . 'login.php');
+header('Location: ' . $base . 'index.php');
 exit();
 ?>

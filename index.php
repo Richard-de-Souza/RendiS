@@ -1,210 +1,175 @@
-<?php
-// index.php
-// Inclui o template de cabeçalho (que já tem <html>, <head>, <body>, CSS, jQuery e SweetAlert2)
-require_once('template_start.php'); 
-?>
-
-<div class="container bg-light p-4 rounded shadow-sm">
-    <h2 class="mb-5 text-primary text-center">💸 Resumo Financeiro</h2>
-
-    <div class="row g-4">
-        <div class="col-md-6">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h5 class="card-title">💵 Dinheiro Disponível</h5>
-                    <h3 id="saldoDisponivel" class="fw-bold">R$ <span class="valor">0,00</span></h3>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="toggleVisibilidade('saldoDisponivel')">👁️ Alternar</button>
-                    <button id="btnAdicionarGastos" class="btn btn-sm btn-primary">+ Adicionar Gastos</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h5 class="card-title">🏦 Dinheiro Investido</h5>
-                    <h3 id="saldoGuardado" class="fw-bold">R$ <span class="valor">0,00</span></h3>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="toggleVisibilidade('saldoGuardado')">👁️ Alternar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <hr class="my-5"> <h4 class="mb-3 text-secondary text-center">📊 Balanço Detalhado</h4> 
-    <ul class="list-unstyled small mb-4 px-4 py-3 border rounded bg-white shadow-sm">
-        <li class="d-flex justify-content-between py-1">Salário: <strong id="salario">R$ 0,00</strong></li>
-        <li class="d-flex justify-content-between py-1">Descontos CLT: <strong id="descontosCLT" class="text-danger">R$ 0,00</strong></li>
-        <li class="d-flex justify-content-between py-1">Mensalidades Fixas: <strong id="mensalidades" class="text-danger">R$ 0,00</strong></li>
-        <li class="d-flex justify-content-between py-1">Gastos do Mês: <strong id="gastos" class="text-danger">R$ 0,00</strong></li>
-        <li class="d-flex justify-content-between py-1">Ganhos do Mês: <strong id="ganhos" class="text-success">R$ 0,00</strong></li>
-    </ul>
-
-    <div class="mt-4">
-        <h4 class="mb-3 text-secondary text-center">🧾 Maiores Gastos do Mês</h4>
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <button class="btn btn-outline-secondary btn-sm" onclick="mudarMes(-1)">← Mês Anterior</button>
-            <strong id="mesReferencia"></strong>
-            <button class="btn btn-outline-secondary btn-sm" onclick="mudarMes(1)">Próximo Mês →</button>
-        </div>
-
-        <table class="table table-striped table-hover shadow-sm" id="tabelaGastosMes">
-            <thead class="table-dark">
-                <tr>
-                    <th>Descrição</th>
-                    <th>Valor</th>
-                    <th>Data</th>
-                    <th class="text-end">Ações</th> </tr>
-            </thead>
-            <tbody id="tabelaGastosMesBody"> </tbody>
-        </table>
-    </div>
-</div>
-
-<script>
-    let dataAtual = new Date();
-
-    function formatarReal(valor) {
-        valor = parseFloat(valor);
-        if (isNaN(valor)) {
-            return 'R$ 0,00';
-        }
-        return 'R$ ' + valor.toFixed(2).replace('.', ',');
-    }
-
-    // Função para alternar visibilidade dos saldos
-    function toggleVisibilidade(id) {
-        const el = document.querySelector(`#${id} .valor`);
-        if (el.textContent.includes('•')) {
-            el.textContent = el.dataset.valorOriginal;
-        } else {
-            el.dataset.valorOriginal = el.textContent;
-            el.textContent = '••••••';
-        }
-    }
-
-    // Função para atualizar o resumo financeiro (Dinheiro Disponível, Salário, etc.)
-    function atualizarResumo() {
-        // Agora o index_controller.php retorna um objeto com 'sucesso', 'mensagem' e 'dados'
-        $.getJSON('index_controller.php', function(response) {
-            if (response.sucesso) {
-                const data = response.dados; // Acesse os dados do resumo dentro da chave 'dados'
-                $('#saldoDisponivel .valor').text(formatarReal(data.dinheiroDisponivel));
-                $('#salario').text(formatarReal(data.salario));
-                $('#descontosCLT').text(formatarReal(data.descontosCLT));
-                $('#mensalidades').text(formatarReal(data.totalMensalidades));
-                $('#gastos').text(formatarReal(data.totalGastos));
-                $('#ganhos').text(formatarReal(data.totalGanhos));
-                // Opcional: Se 'saldoGuardado' vier do backend, atualize aqui
-                // $('#saldoGuardado .valor').text(formatarReal(data.saldoInvestido));
-            } else {
-                Swal.fire('Erro', response.mensagem, 'error');
-            }
-        }).fail(function(jqXHR, textStatus, errorThrown) {
-            console.error("Erro na requisição AJAX para resumo:", textStatus, errorThrown, jqXHR);
-            Swal.fire('Erro', 'Erro de conexão ao carregar resumo financeiro.', 'error');
-        });
-    }
-
-    // Função para atualizar a tabela dos maiores gastos do mês
-    function atualizarGastosMes() {
-        const ano = dataAtual.getFullYear();
-        const mes = String(dataAtual.getMonth() + 1).padStart(2, '0'); // Mês de 1 a 12
-
-        $('#mesReferencia').text(dataAtual.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }));
-
-        // A requisição para 'gastos_mes' também vai para index_controller.php
-        $.ajax({
-            url: 'index_controller.php', // O controller que lida com 'gastos_mes' é o index_controller.php
-            method: 'GET',
-            data: { funcao: 'gastos_mes', ano, mes },
-            dataType: 'json',
-            success: function(gastos) { // O index_controller.php para 'gastos_mes' retorna diretamente o array de gastos
-                let html = '';
-
-                if (gastos.length === 0) {
-                    html = '<tr><td colspan="4" class="text-muted text-center">Nenhum dos 5 maiores gastos registrados neste mês.</td></tr>';
-                } else {
-                    gastos.forEach(gasto => {
-                        html += `
-                            <tr>
-                                <td>${gasto.descricao}</td>
-                                <td>${formatarReal(parseFloat(gasto.valor))}</td>
-                                <td>${gasto.data}</td>
-                                <td class="text-end">
-                                    <button class="btn btn-sm btn-outline-primary me-1" onclick="editarGasto(${gasto.id})" title="Editar">✏️</button>
-                                    <button class="btn btn-sm btn-outline-danger" onclick="excluirGasto(${gasto.id})" title="Excluir">🗑️</button>
-                                </td>
-                            </tr>
-                        `;
-                    });
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Seu App</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
                 }
-                $('#tabelaGastosMesBody').html(html); // Use o ID correto do tbody
-            },
-            error: function(jqXHR, textStatus, errorThrown) {
-                console.error("Erro na requisição AJAX para 'gastos_mes':", textStatus, errorThrown, jqXHR);
-                Swal.fire('Erro', 'Erro de conexão ao carregar maiores gastos do mês.', 'error');
+            }
+        }
+    </script>
+    <!-- SweetAlert2 CDN para alertas amigáveis -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- jQuery CDN para facilitar requisições AJAX -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+
+    <script type="module">
+        // Referências aos elementos do DOM
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+        const toggleToRegisterBtn = document.getElementById('toggleToRegister');
+        const toggleToLoginBtn = document.getElementById('toggleToLogin');
+        const authStatusDiv = document.getElementById('authStatus');
+
+        // Função para mostrar mensagens usando SweetAlert2
+        const showMessage = (icon, title, text) => {
+            Swal.fire({
+                icon: icon,
+                title: title,
+                text: text,
+                confirmButtonText: 'OK',
+                customClass: {
+                    container: 'font-sans',
+                    popup: 'rounded-lg shadow-lg',
+                    header: 'border-b-2 border-gray-200',
+                    title: 'text-2xl font-bold text-gray-800',
+                    content: 'text-gray-600',
+                    confirmButton: 'bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline',
+                }
+            });
+        };
+
+        // Simula o status de autenticação (pode ser ajustado para verificar um cookie de sessão PHP)
+        authStatusDiv.innerHTML = `<p class="text-gray-600 font-semibold">Status: Não autenticado (via banco de dados).</p>`;
+
+
+        // Lógica de Login (agora via index_controller.php)
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = loginForm.email.value;
+            const password = loginForm.password.value;
+
+            const formData = {
+                funcao: 'login',
+                email: email,
+                password: password
+            };
+
+            try {
+                const data = await $.post('index_controller.php', formData, null, 'json'); // Alterado para 'index_controller.php'
+
+                if (data.sucesso) {
+                    showMessage('success', 'Login Bem-Sucedido!', data.mensagem);
+                    authStatusDiv.innerHTML = `<p class="text-green-600 font-semibold">Autenticado com sucesso! ID do Usuário: ${data.usuario_id}</p>`;
+                    // Redirecionamento para o index.php após o login
+                    window.location.href = 'home.php';
+                } else {
+                    showMessage('error', 'Erro de Login', data.mensagem);
+                }
+            } catch (error) {
+                showMessage('error', 'Erro de Conexão', 'Não foi possível conectar ao servidor. Verifique sua rede e o controller PHP.');
+                console.error("Erro na requisição de login:", error);
             }
         });
-    }
 
-    // Função para excluir gasto (chama o gastos_controller.php)
-    function excluirGasto(id) {
-        Swal.fire({
-            title: 'Excluir gasto?',
-            text: 'Essa ação não poderá ser desfeita.',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Sim, excluir',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                // Requisição vai para o gastos_controller.php, não index_controller.php
-                $.post('gastos/gastos_controller.php', { funcao: 'deletar', id }, function (res) {
-                    if (res.sucesso) {
-                        Swal.fire('Excluído', res.mensagem, 'success');
-                        atualizarResumo();     // Atualiza o resumo financeiro
-                        atualizarGastosMes();  // Atualiza a lista dos maiores gastos
-                    } else {
-                        Swal.fire('Erro', res.mensagem, 'error');
-                    }
-                }, 'json').fail(function(jqXHR, textStatus, errorThrown) {
-                    console.error("Erro na requisição AJAX para 'deletar' gasto:", textStatus, errorThrown, jqXHR);
-                    Swal.fire('Erro', 'Erro de conexão ao excluir gasto.', 'error');
-                });
+        // Lógica de Registro (agora via index_controller.php)
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = registerForm.email.value;
+            const password = registerForm.password.value;
+
+            const formData = {
+                funcao: 'registrar',
+                email: email,
+                password: password
+            };
+
+            try {
+                const data = await $.post('index_controller.php', formData, null, 'json'); // Alterado para 'index_controller.php'
+
+                if (data.sucesso) {
+                    showMessage('success', 'Registro Bem-Sucedido!', data.mensagem + ' Você já pode fazer login.');
+                    toggleToLoginBtn.click();
+                } else {
+                    showMessage('error', 'Erro de Registro', data.mensagem);
+                }
+            } catch (error) {
+                showMessage('error', 'Erro de Conexão', 'Não foi possível conectar ao servidor. Verifique sua rede e o controller PHP.');
+                console.error("Erro na requisição de registro:", error);
             }
         });
-    }
 
-    // Função para editar gasto (redireciona para a página de edição de gastos)
-    function editarGasto(id) {
-        window.location.href = `gastos/gastos.php?id=${id}`;
-    }
-
-    // Função para mudar o mês de referência
-    function mudarMes(direcao) {
-        dataAtual.setMonth(dataAtual.getMonth() + direcao);
-        atualizarGastosMes();
-    }
-
-    // Ao carregar a página
-    $(document).ready(function() {
-        // Atualiza os dados do resumo e os maiores gastos do mês
-        atualizarResumo();
-        atualizarGastosMes();
-        
-        // Oculta o saldo guardado por padrão
-        toggleVisibilidade('saldoGuardado');
-
-        // Redireciona para a página de adicionar gastos
-        $('#btnAdicionarGastos').click(() => {
-            window.location.href = 'gastos/gastos.php';
+        // Alternar entre formulários de Login e Registro
+        toggleToRegisterBtn.addEventListener('click', () => {
+            loginForm.classList.add('hidden');
+            registerForm.classList.remove('hidden');
+            document.getElementById('authTitle').innerText = 'Criar Conta';
+            loginForm.reset();
+            registerForm.reset();
         });
-    });
-</script>
 
-<?php
-// Fecha a div.content e as tags <body> e <html> abertas em template_start.php
-// IMPORTANTE: Remova quaisquer includes duplicados de scripts aqui.
-?>
-    </div></body>
+        toggleToLoginBtn.addEventListener('click', () => {
+            registerForm.classList.add('hidden');
+            loginForm.classList.remove('hidden');
+            document.getElementById('authTitle').innerText = 'Fazer Login';
+            loginForm.reset();
+            registerForm.reset();
+        });
+    </script>
+</head>
+<body class="bg-gradient-to-r from-blue-500 to-purple-600 min-h-screen flex items-center justify-center font-sans p-4">
+    <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
+        <h1 id="authTitle" class="text-3xl font-bold text-center text-gray-800 mb-8">Fazer Login</h1>
+
+        <!-- Formulário de Login -->
+        <form id="loginForm" class="space-y-6">
+            <div>
+                <label for="loginEmail" class="block text-gray-700 text-sm font-bold mb-2">E-mail</label>
+                <input type="email" id="loginEmail" name="email" class="shadow appearance-none border rounded-xl w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="seuemail@exemplo.com" required>
+            </div>
+            <div>
+                <label for="loginPassword" class="block text-gray-700 text-sm font-bold mb-2">Senha</label>
+                <input type="password" id="loginPassword" name="password" class="shadow appearance-none border rounded-xl w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="********" required>
+            </div>
+            <div class="flex items-center justify-between">
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl focus:outline-none focus:shadow-outline transition duration-200 ease-in-out transform hover:scale-105 w-full">Entrar</button>
+            </div>
+            <p class="text-center text-gray-600 text-sm mt-4">
+                Não tem uma conta? <a href="#" id="toggleToRegister" class="text-blue-600 hover:text-blue-800 font-bold">Crie uma aqui!</a>
+            </p>
+        </form>
+
+        <!-- Formulário de Registro (inicialmente oculto) -->
+        <form id="registerForm" class="space-y-6 hidden">
+            <div>
+                <label for="registerEmail" class="block text-gray-700 text-sm font-bold mb-2">E-mail</label>
+                <input type="email" id="registerEmail" name="email" class="shadow appearance-none border rounded-xl w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="seuemail@exemplo.com" required>
+            </div>
+            <div>
+                <label for="registerPassword" class="block text-gray-700 text-sm font-bold mb-2">Senha</label>
+                <input type="password" id="registerPassword" name="password" class="shadow appearance-none border rounded-xl w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="********" required>
+                <p class="text-xs text-gray-500 mt-1">Mínimo de 6 caracteres.</p>
+            </div>
+            <div class="flex items-center justify-between">
+                <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-xl focus:outline-none focus:shadow-outline transition duration-200 ease-in-out transform hover:scale-105 w-full">Registrar</button>
+            </div>
+            <p class="text-center text-gray-600 text-sm mt-4">
+                Já tem uma conta? <a href="#" id="toggleToLogin" class="text-purple-600 hover:text-purple-800 font-bold">Faça login aqui!</a>
+            </p>
+        </form>
+
+        <div id="authStatus" class="mt-6 p-4 bg-gray-100 rounded-lg text-center text-sm">
+            <p class="text-gray-600 font-semibold">Status: Não autenticado (via banco de dados).</p>
+        </div>
+    </div>
+</body>
 </html>

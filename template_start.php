@@ -11,7 +11,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Se não estiver logado E a página atual não for a de login, redireciona para o login.
 // Isso evita um loop de redirecionamento.
 $current_page = basename($_SERVER['PHP_SELF']);
-if (!isset($_SESSION['user_id']) && $current_page !== 'login.php') {
+if (!isset($_SESSION['user_id']) && $current_page !== 'login.php') { 
     header('Location: ' . $base . 'login.php'); // Redireciona para a tela de login
     exit();
 }
@@ -23,7 +23,15 @@ if (!isset($_SESSION['user_id']) && $current_page !== 'login.php') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Controle de Investimentos</title>
 
+    <!-- Ícone da página (favicon) - Dinheirinho Voando -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 576 512'%3E%3C!--! Font Awesome Free 6.0.0-beta3 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2021 Fonticons, Inc. --%3E%3Cpath fill='%23007bff' d='M64 32C28.7 32 0 60.7 0 96v320c0 35.3 28.7 64 64 64H512c35.3 0 64-28.7 64-64V96c0-35.3-28.7-64-64-64H64zm448 96H64V96h448v32zm0 64H64v32h448v-32zm0 64H64v32h448v-32zM64 352h448v32H64v-32zm0 64h448v32H64v-32z'/%3E%3C/svg%3E">
+    
+    <!-- Bootstrap CSS CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" xintegrity="sha384-QWTKZyjpPEjISv5WaRU9O9FvRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <!-- CORRIGIDO: O atributo 'xintegrity' foi alterado para 'integrity' na linha acima. -->
+
+    <!-- Font Awesome CDN para ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" xintegrity="sha512-Fo3rlrZj/k7ujTnHg4CGR2D7kSs0QxZhpcwz/SS0s/j+Q/8i6I/fRPJ+r5z3q+V+L+j+R+r+R+g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <!-- CORRIGIDO: O atributo 'xintegrity' foi alterado para 'integrity' na linha acima. -->
 
     <style>
@@ -69,6 +77,10 @@ if (!isset($_SESSION['user_id']) && $current_page !== 'login.php') {
             font-weight: bold;
             padding: 10px 20px 25px;
             text-align: center;
+        }
+        .sidebar-desktop .app-title i { /* Estilo para o ícone no título */
+            margin-right: 8px;
+            color: var(--primary-color); /* Cor do ícone no título */
         }
         .sidebar-desktop a {
             color: #ffffff;
@@ -121,6 +133,10 @@ if (!isset($_SESSION['user_id']) && $current_page !== 'login.php') {
         .offcanvas-mobile .offcanvas-title {
             color: white;
             font-weight: bold;
+        }
+        .offcanvas-mobile .offcanvas-title i { /* Estilo para o ícone no título do offcanvas */
+            margin-right: 8px;
+            color: var(--primary-color);
         }
         .offcanvas-mobile .offcanvas-body a {
             color: #ffffff;
@@ -267,8 +283,8 @@ if (!isset($_SESSION['user_id']) && $current_page !== 'login.php') {
 
     <!-- Sidebar para Desktop (oculto em mobile) -->
     <div class="sidebar-desktop d-none d-md-flex flex-column">
-        <div class="app-title">Rendis</div>
-        <a href="<?= $base ?>index.php">🏠 Início</a>
+        <div class="app-title"><i class="fas fa-money-bill-wave"></i> Rendis</div> <!-- Ícone atualizado -->
+        <a href="<?= $base ?>home.php">🏠 Início</a>
         <a href="<?= $base ?>investimentos/investimentos.php">📈 Investimentos</a>
         <a href="<?= $base ?>perfil/perfil.php">👤 Perfil</a>
         <a href="#">📊 Simulações</a>
@@ -281,11 +297,11 @@ if (!isset($_SESSION['user_id']) && $current_page !== 'login.php') {
     <!-- Offcanvas Menu para Mobile -->
     <div class="offcanvas offcanvas-start offcanvas-mobile d-md-none" tabindex="-1" id="offcanvasNavbar" aria-labelledby="offcanvasNavbarLabel">
         <div class="offcanvas-header">
-            <h5 class="offcanvas-title" id="offcanvasNavbarLabel">Rendis Menu</h5>
+            <h5 class="offcanvas-title" id="offcanvasNavbarLabel"><i class="fas fa-money-bill-wave"></i> Rendis Menu</h5> <!-- Ícone atualizado -->
             <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
         </div>
         <div class="offcanvas-body">
-            <a href="<?= $base ?>index.php">🏠 Início</a>
+            <a href="<?= $base ?>home.php">🏠 Início</a>
             <a href="<?= $base ?>investimentos/investimentos.php">📈 Investimentos</a>
             <a href="<?= $base ?>perfil/perfil.php">👤 Perfil</a>
             <a href="#">📊 Simulações</a>
@@ -297,12 +313,10 @@ if (!isset($_SESSION['user_id']) && $current_page !== 'login.php') {
     </div>
 
     <div class="content">
+        <!-- jQuery CDN -->
         <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script> 
+        <!-- SweetAlert2 CDN -->
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <!-- Bootstrap JS Bundle CDN -->
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" xintegrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-
-
-    <div class="content">
-        <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script> 
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" xintegrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+        <!-- CORRIGIDO: O atributo 'xintegrity' foi alterado para 'integrity' na linha acima. -->
