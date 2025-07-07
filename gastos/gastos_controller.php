@@ -20,6 +20,12 @@ if (!isset($_SESSION['user_id'])) {
 
 $usuario_id = $_SESSION['user_id']; // Obtém o ID do usuário logado
 
+// Verifica se a conexão com o banco de dados é válida
+if (!isset($conn) || $conn->connect_error) {
+    echo json_encode(['sucesso' => false, 'mensagem' => 'Erro na conexão com o banco de dados. Por favor, tente novamente mais tarde.']);
+    exit();
+}
+
 // Garantir que a tabela 'gastos' exista e tenha a coluna 'usuario_id'
 // Adicionado ON DELETE CASCADE para manter a integridade referencial
 $conn->query("
@@ -33,13 +39,6 @@ $conn->query("
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ");
 
-// Verifica se a conexão com o banco de dados é válida
-// A declaração global $conn não é necessária se $conn for passado como parâmetro para as funções
-// ou se o script estiver em escopo global. Removido 'global $conn;'
-if (!isset($conn) || $conn->connect_error) {
-    echo json_encode(['sucesso' => false, 'mensagem' => 'Erro na conexão com o banco de dados. Por favor, tente novamente mais tarde.']);
-    exit();
-}
 
 // Verifica se a variável 'funcao' foi passada na requisição
 if (!isset($_REQUEST['funcao']) || empty($_REQUEST['funcao'])) {
@@ -51,22 +50,34 @@ $funcao = $_REQUEST['funcao'];
 
 // --- Funções Auxiliares Comuns ---
 
-/**
- * Garante que todos os dados em um array (ou string) estejam em UTF-8.
- * @param mixed $mixed O dado a ser convertido.
- * @return mixed O dado convertido para UTF-8.
- */
+// REMOVIDO: A função utf8ize foi removida.
+// Se a conexão com o banco de dados estiver configurada corretamente para UTF-8 (como em banco.php),
+// os dados já virão em UTF-8 e esta função é desnecessária e pode causar problemas.
+/*
 function utf8ize($mixed) {
     if (is_array($mixed)) {
         foreach ($mixed as $key => $value) {
             $mixed[$key] = utf8ize($value);
         }
     } elseif (is_string($mixed)) {
-        // Usa 'auto' para tentar detectar o encoding original e converter para UTF-8
-        return mb_convert_encoding($mixed, 'UTF-8', 'auto');
+        if (mb_check_encoding($mixed, 'UTF-8')) {
+            return $mixed;
+        } else {
+            $converted = mb_convert_encoding($mixed, 'UTF-8', 'ISO-8859-1');
+            if (mb_check_encoding($converted, 'UTF-8')) {
+                return $converted;
+            }
+            $converted = mb_convert_encoding($mixed, 'UTF-8', 'Windows-1252');
+            if (mb_check_encoding($converted, 'UTF-8')) {
+                return $converted;
+            }
+            return mb_convert_encoding($mixed, 'UTF-8', 'auto');
+        }
     }
     return $mixed;
 }
+*/
+
 
 /**
  * Valida se uma string é uma data no formato 'YYYY-MM-DD'.
@@ -84,6 +95,7 @@ function validarData($data) {
  * @param array $dados Opcional. Dados a serem incluídos na resposta.
  */
 function enviarSucessoJson($mensagem, $dados = []) {
+    // REMOVIDO: Não é necessário utf8ize aqui se os dados já vêm em UTF-8 do DB
     echo json_encode(['sucesso' => true, 'mensagem' => $mensagem, 'dados' => $dados], JSON_UNESCAPED_UNICODE);
     exit();
 }
@@ -119,7 +131,8 @@ function listarGastos($conn, $usuario_id) {
         $retorno = [];
         if ($res && $res->num_rows > 0) {
             while ($row = $res->fetch_assoc()) {
-                $retorno[] = utf8ize($row);
+                // REMOVIDO: Não é necessário utf8ize aqui
+                $retorno[] = $row; 
             }
         }
         $stmt->close();
@@ -164,7 +177,8 @@ function gastosMes($conn, $usuario_id) {
         $retorno = [];
         if ($res && $res->num_rows > 0) {
             while ($row = $res->fetch_assoc()) {
-                $retorno[] = utf8ize($row);
+                // REMOVIDO: Não é necessário utf8ize aqui
+                $retorno[] = $row; 
             }
         }
         $stmt->close();
@@ -204,7 +218,8 @@ function buscarGasto($conn, $usuario_id) {
 
         $res = $stmt->get_result();
         if ($res && $res->num_rows > 0) {
-            $gasto = utf8ize($res->fetch_assoc());
+            // REMOVIDO: Não é necessário utf8ize aqui
+            $gasto = $res->fetch_assoc();
             enviarSucessoJson('Gasto encontrado com sucesso.', $gasto);
         } else {
             enviarErroJson('Gasto não encontrado ou não pertence ao usuário logado.');
