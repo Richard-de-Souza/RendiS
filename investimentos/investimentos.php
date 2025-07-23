@@ -4,6 +4,7 @@
     <h2 class="mb-4">Meus Investimentos</h2>
 
     <form id="formInvestimento" class="row g-3 mb-4">
+        <input type="hidden" name="id" id="investimentoId">
         <div class="col-md-3 col-sm-6 col-12">
             <label class="form-label">Ticker (ex: PETR4)</label>
             <input type="text" name="ticker" class="form-control" required>
@@ -20,7 +21,8 @@
         </div>
 
         <div class="col-12 col-md-4 d-grid">
-            <button type="submit" class="btn btn-primary mt-md-4">Salvar Investimento</button>
+            <button type="submit" class="btn btn-primary mt-md-4" id="btnSalvarInvestimento">Salvar Novo Investimento</button>
+            <button type="button" class="btn btn-secondary mt-2" id="btnCancelarEdicao" style="display:none;">Cancelar Edição</button>
         </div>
     </form>
 
@@ -29,11 +31,16 @@
             <thead class="table-dark">
                 <tr>
                     <th>Ticker</th>
-                    <th class="d-none d-sm-table-cell">Quantidade</th> <th class="d-none d-md-table-cell">Preço Médio</th> <th class="d-none d-md-table-cell">Preço Atual</th> <th class="d-none d-lg-table-cell">Valorização</th> <th class="d-none d-lg-table-cell">Lucro Total</th> <th class="text-end">Ações</th>
+                    <th class="d-none d-sm-table-cell">Quantidade</th>
+                    <th class="d-none d-md-table-cell">Preço Médio</th>
+                    <th class="d-none d-md-table-cell">Preço Atual (Simulado)</th>
+                    <th class="d-none d-lg-table-cell">Valorização (Simulada)</th>
+                    <th class="d-none d-lg-table-cell">Lucro Total (Simulado)</th>
+                    <th class="text-end">Ações</th>
                 </tr>
             </thead>
             <tbody>
-            </tbody>
+                </tbody>
         </table>
     </div>
 </div>
@@ -48,13 +55,18 @@
             <div class="modal-body">
                 <p><strong>Ticker:</strong> <span id="modalTicker"></span></p>
                 <p><strong>Quantidade:</strong> <span id="modalQuantidade"></span></p>
-                <p><strong>Preço Médio:</strong> <span id="modalPrecoMedio"></span></p>
-                <p><strong>Preço Atual:</strong> <span id="modalPrecoAtual"></span></p>
-                <p><strong>Valorização:</strong> <span id="modalValorizacao"></span></p>
-                <p><strong>Lucro Total:</strong> <span id="modalLucroTotal"></span></p>
+                <p><strong>Preço Médio Pago:</strong> <span id="modalPrecoMedio"></span></p>
+                <p><strong>Preço Atual (Simulado):</strong> <span id="modalPrecoAtual"></span></p>
+                <p><strong>Valorização (Simulada):</strong> <span id="modalValorizacao"></span></p>
+                <p><strong>Lucro Total (Simulado):</strong> <span id="modalLucroTotal"></span></p>
                 <hr>
                 <div class="d-grid gap-2">
-                    <button type="button" class="btn btn-danger" id="modalBtnExcluirInvestimento">Excluir Investimento</button>
+                    <button type="button" class="btn btn-warning btn-editar-investimento-modal" style="display:none;">
+                        Editar
+                    </button>
+                    <button type="button" class="btn btn-danger btn-excluir-investimento-modal" style="display:none;">
+                        Excluir
+                    </button>
                 </div>
             </div>
             <div class="modal-footer">
@@ -80,7 +92,7 @@
                 html = '<tr><td colspan="7" class="text-muted text-center">Nenhum investimento registrado.</td></tr>';
             } else {
                 dados.forEach(item => {
-                    const precoAtual = parseFloat(item.preco_atual) || 0;
+                    const precoAtual = parseFloat(item.preco_atual) || parseFloat(item.preco_medio) || 0;
                     const quantidade = parseInt(item.quantidade) || 0;
                     const precoMedio = parseFloat(item.preco_medio) || 0;
 
@@ -103,8 +115,8 @@
                         <tr data-id="${item.id}"
                             data-ticker="${item.ticker}"
                             data-quantidade="${quantidade}"
-                            data-preco_medio="${precoMedioFormat}"
-                            data-preco_atual="${precoAtualFormat}"
+                            data-preco_medio="${precoMedio}"
+                            data-preco_atual="${precoAtual}"
                             data-valorizacao="${perc}%"
                             data-lucro_total="R$ ${lucroFormat}"
                             data-perc_color_class="${percColorClass}"
@@ -116,7 +128,14 @@
                             <td class="d-none d-lg-table-cell ${percColorClass}">${perc}%</td>
                             <td class="d-none d-lg-table-cell ${lucroColorClass}">R$ ${lucroFormat}</td>
                             <td class="text-end">
-                                <button class="btn btn-sm btn-info btn-detalhes-investimento d-block d-md-none mb-1">Detalhes</button>
+                                <button class="btn btn-sm btn-info btn-ver-detalhes d-block d-md-none mb-1">Ver Detalhes</button>
+                                <button class="btn btn-sm btn-warning btn-editar-investimento d-none d-md-inline-block me-1"
+                                        data-id="${item.id}"
+                                        data-ticker="${item.ticker}"
+                                        data-quantidade="${quantidade}"
+                                        data-preco_medio="${precoMedio}">
+                                    Editar
+                                </button>
                                 <button class="btn btn-sm btn-danger btn-excluir-investimento-tabela d-none d-md-inline-block" data-id="${item.id}">Excluir</button>
                             </td>
                         </tr>
@@ -127,18 +146,29 @@
         }).fail(() => Swal.fire('Erro', 'Erro ao carregar investimentos.', 'error'));
     }
 
+    // Event listener para o formulário de salvar/atualizar investimento
     $('#formInvestimento').on('submit', function (e) {
         e.preventDefault();
+
+        const investimentoId = $('#investimentoId').val();
+        let funcao = 'criar'; // Default para criar novo
+        if (investimentoId) {
+            funcao = 'atualizar'; // Se tem ID, é para atualizar
+        }
 
         $.ajax({
             url: 'investimentos_controller.php',
             method: 'POST',
-            data: $(this).serialize() + '&funcao=criar',
+            data: $(this).serialize() + '&funcao=' + funcao,
             dataType: 'json',
             success: function (res) {
                 if (res.sucesso) {
                     Swal.fire('Sucesso', res.mensagem, 'success');
                     $('#formInvestimento')[0].reset();
+                    $('#investimentoId').val(''); // Limpa o ID oculto
+                    $('input[name="ticker"]').removeAttr('readonly').removeClass('bg-light'); // Reabilita visualmente e para envio
+                    $('#btnSalvarInvestimento').text('Salvar Novo Investimento').removeClass('btn-success').addClass('btn-primary');
+                    $('#btnCancelarEdicao').hide();
                     carregarInvestimentos();
                 } else {
                     Swal.fire('Erro', res.mensagem, 'error');
@@ -148,27 +178,80 @@
         });
     });
 
-    // Event listener para abrir o modal de detalhes do investimento
-    $('#tabelaInvestimentos tbody').on('click', '.btn-detalhes-investimento', function() {
-        const rowData = $(this).closest('tr').data();
-        
+    // Event listener para o botão de edição na tabela (desktop)
+    $('#tabelaInvestimentos tbody').on('click', '.btn-editar-investimento', function() {
+        const row = $(this).closest('tr');
+        const id = row.data('id');
+        const ticker = row.data('ticker');
+        const quantidade = row.data('quantidade');
+        const precoMedio = row.data('preco_medio');
+
+        // Preenche o formulário com os dados para edição
+        $('#investimentoId').val(id);
+        $('input[name="ticker"]').val(ticker).attr('readonly', true).addClass('bg-light');
+        $('input[name="quantidade"]').val(quantidade);
+        $('input[name="preco_medio"]').val(precoMedio);
+
+        // Altera o texto do botão de salvar e mostra o botão de cancelar
+        $('#btnSalvarInvestimento').text('Atualizar Investimento').removeClass('btn-primary').addClass('btn-success');
+        $('#btnCancelarEdicao').show();
+    });
+
+    // Event listener para o NOVO botão "Ver Detalhes" (para mobile)
+    $('#tabelaInvestimentos tbody').on('click', '.btn-ver-detalhes', function() {
+        const rowData = $(this).closest('tr').data(); // Obtém todos os 'data-attributes' da linha
+
+        // Preenche o modal com as informações
         $('#modalTicker').text(rowData.ticker);
         $('#modalQuantidade').text(rowData.quantidade);
-        $('#modalPrecoMedio').text(`R$ ${rowData.preco_medio}`);
-        $('#modalPrecoAtual').text(`R$ ${rowData.preco_atual}`);
+        $('#modalPrecoMedio').text(formatCurrency(rowData.preco_medio));
+        $('#modalPrecoAtual').text(formatCurrency(rowData.preco_atual));
         
+        // Aplica as classes de cor e o texto formatado para valorização/lucro
         $('#modalValorizacao').text(rowData.valorizacao).removeClass().addClass(rowData.perc_color_class);
         $('#modalLucroTotal').text(rowData.lucro_total).removeClass().addClass(rowData.lucro_color_class);
         
-        $('#modalBtnExcluirInvestimento').data('id', rowData.id);
+        // Armazena o ID no botão do modal para uso na edição/exclusão via modal
+        $('.btn-editar-investimento-modal').data(rowData).show(); // Passa todos os dados para o botão de editar do modal
+        $('.btn-excluir-investimento-modal').data('id', rowData.id).show(); // Passa o ID para o botão de excluir do modal
 
+        // Abre o modal
         const modal = new bootstrap.Modal(document.getElementById('modalDetalhesInvestimento'));
         modal.show();
     });
 
-    // Event listener para o botão de exclusão dentro do modal
-    $('#modalBtnExcluirInvestimento').on('click', function() {
+    // Event listener para o botão de EDIÇÃO DENTRO DO MODAL (para mobile)
+    $('#modalDetalhesInvestimento').on('click', '.btn-editar-investimento-modal', function() {
+        const rowData = $(this).data(); // Pega os dados que foram passados para o botão
+
+        // Preenche o formulário com os dados para edição
+        $('#investimentoId').val(rowData.id);
+        $('input[name="ticker"]').val(rowData.ticker).attr('readonly', true).addClass('bg-light');
+        $('input[name="quantidade"]').val(rowData.quantidade);
+        $('input[name="preco_medio"]').val(rowData.preco_medio);
+
+        // Altera o texto do botão de salvar e mostra o botão de cancelar
+        $('#btnSalvarInvestimento').text('Atualizar Investimento').removeClass('btn-primary').addClass('btn-success');
+        $('#btnCancelarEdicao').show();
+
+        // Esconde o modal de detalhes
+        const modalElement = document.getElementById('modalDetalhesInvestimento');
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if (modal) {
+            modal.hide();
+        }
+    });
+
+    // Event listener para o botão de EXCLUIR DENTRO DO MODAL (para mobile)
+    $('#modalDetalhesInvestimento').on('click', '.btn-excluir-investimento-modal', function() {
         const id = $(this).data('id');
+        // Fecha o modal de detalhes antes de abrir o Swal.fire
+        const modalElement = document.getElementById('modalDetalhesInvestimento');
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if (modal) {
+            modal.hide();
+        }
+
         Swal.fire({
             title: 'Excluir investimento?',
             text: "Essa ação não poderá ser desfeita!",
@@ -179,16 +262,20 @@
         }).then((result) => {
             if (result.isConfirmed) {
                 excluirInvestimento(id);
-                const modalElement = document.getElementById('modalDetalhesInvestimento');
-                const modal = bootstrap.Modal.getInstance(modalElement);
-                if (modal) {
-                    modal.hide();
-                }
             }
         });
     });
 
-    // Event listener para o botão de exclusão da tabela (para desktop)
+    // Event listener para o botão de cancelar edição
+    $('#btnCancelarEdicao').on('click', function() {
+        $('#formInvestimento')[0].reset();
+        $('#investimentoId').val('');
+        $('input[name="ticker"]').removeAttr('readonly').removeClass('bg-light');
+        $('#btnSalvarInvestimento').text('Salvar Novo Investimento').removeClass('btn-success').addClass('btn-primary');
+        $(this).hide();
+    });
+
+    // Event listener para o botão de exclusão da tabela (desktop)
     $('#tabelaInvestimentos tbody').on('click', '.btn-excluir-investimento-tabela', function() {
         const id = $(this).data('id');
         Swal.fire({
@@ -205,6 +292,7 @@
         });
     });
 
+    // Função para enviar a requisição de exclusão ao backend
     function excluirInvestimento(id) {
         $.post('investimentos_controller.php', { funcao: 'deletar', id }, function (res) {
             if (res.sucesso) {
@@ -216,5 +304,6 @@
         }, 'json').fail(() => Swal.fire('Erro', 'Erro ao excluir investimento.', 'error'));
     }
 
+    // Carrega os investimentos quando a página é completamente carregada
     $(document).ready(() => carregarInvestimentos());
 </script>

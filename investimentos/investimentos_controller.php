@@ -38,41 +38,40 @@ $conn->query("
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ");
 
-$API_KEY = 'be9f9538dfca404bbd4620b1f2e34d27'; // Nota: Em produção, a API Key deve ser armazenada de forma mais segura.
-
 $funcao = $_REQUEST['funcao'] ?? '';
 
 // Roteador principal de funções
 if ($funcao == 'listar') {
-    listar($conn, $API_KEY, $usuario_id);
-} 
-else if ($funcao == 'criar' || $funcao == 'atualizar') { // Adicionado 'atualizar' aqui, caso o frontend use essa função
-    criarOuAtualizar($conn, $usuario_id);
-} 
+    listar($conn, $usuario_id);
+}
+else if ($funcao == 'criar') { // Função específica para CRIAR
+    criarInvestimento($conn, $usuario_id);
+}
+else if ($funcao == 'atualizar') { // Função específica para ATUALIZAR
+    atualizarInvestimento($conn, $usuario_id);
+}
 else if ($funcao == 'deletar') {
-    deletar($conn, $usuario_id);
-} 
+    deletarInvestimento($conn, $usuario_id);
+}
 else {
     echo json_encode(['sucesso' => false, 'mensagem' => 'Função inválida ou não especificada.']);
 }
 
 /**
- * Lista todos os investimentos do usuário logado.
+ * Lista todos os investimentos do usuário logado diretamente do banco de dados.
  * @param mysqli $conn Objeto de conexão com o banco de dados.
- * @param string $apiKey Chave da API para obter preços atuais.
  * @param int $usuario_id ID do usuário logado.
  */
-function listar($conn, $apiKey, $usuario_id) {
+function listar($conn, $usuario_id) {
     $dados = [];
-    // Filtra investimentos pelo id_usuario
     $stmt = $conn->prepare("SELECT id, ticker, quantidade, preco_medio FROM investimentos WHERE id_usuario = ? ORDER BY ticker ASC");
     $stmt->bind_param("i", $usuario_id);
     $stmt->execute();
     $res = $stmt->get_result();
 
     while ($row = $res->fetch_assoc()) {
-        $precoAtual = obterPrecoAtual($row['ticker'], $apiKey);
-        $row['preco_atual'] = $precoAtual !== null ? $precoAtual : 0;
+        // preco_atual será sempre igual ao preco_medio para fins de exibição simulada, já que não há API externa.
+        $row['preco_atual'] = $row['preco_medio']; 
         $dados[] = $row;
     }
     $stmt->close();
@@ -81,56 +80,11 @@ function listar($conn, $apiKey, $usuario_id) {
 }
 
 /**
- * Obtém o preço atual de um ticker de uma API externa.
- * @param string $ticker Símbolo da ação (ex: PETR4).
- * @param string $apiKey Chave da API Twelve Data.
- * @return float|null Preço atual da ação ou null em caso de erro.
- */
-function obterPrecoAtual($ticker, $apiKey) {
-    $ticker = strtoupper(trim($ticker));
-
-    // Ajuste para tickers brasileiros (adiciona .SA para B3)
-    if (preg_match('/^[A-Z0-9]{4}[0-9]$/', $ticker)) { // Ex: ABCD3, ABCD4
-        $ticker .= '.SA';
-    }
-
-    $url = "https://api.twelvedata.com/time_series?symbol={$ticker}&interval=1min&apikey={$apiKey}&outputsize=1";
-
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 5); // Timeout de 5 segundos
-    $resultado = curl_exec($ch);
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curl_error = curl_error($ch);
-    curl_close($ch);
-
-    if ($resultado === FALSE) {
-        error_log("Erro cURL ao obter preço para {$ticker}: " . $curl_error);
-        return null;
-    }
-
-    $dados = json_decode($resultado, true);
-
-    if ($http_code !== 200) {
-        error_log("Erro HTTP {$http_code} da API Twelve Data para {$ticker}: " . json_encode($dados));
-        return null;
-    }
-
-    if (isset($dados['values'][0]['close'])) {
-        return floatval($dados['values'][0]['close']);
-    } else {
-        error_log("Erro API Twelve Data: Dados de preço 'close' não encontrados para {$ticker}. Resposta: " . json_encode($dados));
-        return null;
-    }
-}
-
-/**
- * Cria ou atualiza um investimento para o usuário logado.
+ * Cria um novo investimento para o usuário logado.
  * @param mysqli $conn Objeto de conexão com o banco de dados.
  * @param int $usuario_id ID do usuário logado.
  */
-function criarOuAtualizar($conn, $usuario_id) {
+function criarInvestimento($conn, $usuario_id) {
     $ticker = strtoupper(trim($_POST['ticker'] ?? ''));
     $quantidade = filter_input(INPUT_POST, 'quantidade', FILTER_VALIDATE_INT);
     $preco_medio = filter_input(INPUT_POST, 'preco_medio', FILTER_VALIDATE_FLOAT);
@@ -140,33 +94,16 @@ function criarOuAtualizar($conn, $usuario_id) {
         return;
     }
 
-    // Verifica se já existe um investimento com este ticker para ESTE USUÁRIO
+    // Verifica se já existe um investimento com este ticker para ESTE USUÁRIO antes de criar
     $stmt = $conn->prepare("SELECT id FROM investimentos WHERE ticker = ? AND id_usuario = ?");
     $stmt->bind_param("si", $ticker, $usuario_id);
     $stmt->execute();
     $stmt->store_result();
 
     if ($stmt->num_rows > 0) {
-        // Atualiza o investimento existente
-        $stmt->bind_result($investimento_id);
-        $stmt->fetch();
-        $stmt->close(); // Fecha o statement anterior
-
-        $stmt = $conn->prepare("UPDATE investimentos SET quantidade=?, preco_medio=? WHERE id=? AND id_usuario=?");
-        $stmt->bind_param("dsii", $quantidade, $preco_medio, $investimento_id, $usuario_id);
-        
-        if ($stmt->execute()) {
-            if ($stmt->affected_rows > 0) {
-                echo json_encode(['sucesso' => true, 'mensagem' => 'Investimento atualizado com sucesso!']);
-            } else {
-                echo json_encode(['sucesso' => false, 'mensagem' => 'Nenhuma alteração feita ou investimento não encontrado.']);
-            }
-        } else {
-            echo json_encode(['sucesso' => false, 'mensagem' => 'Erro ao atualizar investimento: ' . $stmt->error]);
-        }
+        echo json_encode(['sucesso' => false, 'mensagem' => 'Já existe um investimento com este ticker. Use a função de edição para atualizá-lo.']);
     } else {
-        // Cria um novo investimento
-        $stmt->close(); // Fecha o statement anterior caso não tenha encontrado
+        $stmt->close(); // Fecha o statement anterior
 
         $stmt = $conn->prepare("INSERT INTO investimentos (ticker, quantidade, preco_medio, id_usuario) VALUES (?, ?, ?, ?)");
         $stmt->bind_param("sidi", $ticker, $quantidade, $preco_medio, $usuario_id);
@@ -181,11 +118,43 @@ function criarOuAtualizar($conn, $usuario_id) {
 }
 
 /**
+ * Atualiza um investimento existente para o usuário logado.
+ * @param mysqli $conn Objeto de conexão com o banco de dados.
+ * @param int $usuario_id ID do usuário logado.
+ */
+function atualizarInvestimento($conn, $usuario_id) {
+    $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+    $ticker = strtoupper(trim($_POST['ticker'] ?? '')); // Ticker pode ser enviado para validação, mas não para atualização
+    $quantidade = filter_input(INPUT_POST, 'quantidade', FILTER_VALIDATE_INT);
+    $preco_medio = filter_input(INPUT_POST, 'preco_medio', FILTER_VALIDATE_FLOAT);
+
+    if (!$id || !$ticker || $quantidade === false || $quantidade < 0 || $preco_medio === false || $preco_medio < 0) {
+        echo json_encode(['sucesso' => false, 'mensagem' => 'Dados inválidos ou incompletos para atualização.']);
+        return;
+    }
+
+    // A atualização não muda o ticker, apenas quantidade e preco_medio para o ID e usuário corretos
+    $stmt = $conn->prepare("UPDATE investimentos SET quantidade=?, preco_medio=? WHERE id=? AND id_usuario=?");
+    $stmt->bind_param("dsii", $quantidade, $preco_medio, $id, $usuario_id);
+    
+    if ($stmt->execute()) {
+        if ($stmt->affected_rows > 0) {
+            echo json_encode(['sucesso' => true, 'mensagem' => 'Investimento atualizado com sucesso!']);
+        } else {
+            echo json_encode(['sucesso' => false, 'mensagem' => 'Nenhuma alteração feita ou investimento não encontrado.']);
+        }
+    } else {
+        echo json_encode(['sucesso' => false, 'mensagem' => 'Erro ao atualizar investimento: ' . $stmt->error]);
+    }
+    $stmt->close();
+}
+
+/**
  * Deleta um investimento específico por ID para o usuário logado.
  * @param mysqli $conn Objeto de conexão com o banco de dados.
  * @param int $usuario_id ID do usuário logado.
  */
-function deletar($conn, $usuario_id) {
+function deletarInvestimento($conn, $usuario_id) { // Renomeada para clareza
     $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
     if (!$id) {
         echo json_encode(['sucesso' => false, 'mensagem' => 'ID inválido para exclusão.']);
