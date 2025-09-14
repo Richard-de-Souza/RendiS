@@ -1,15 +1,21 @@
 <?php
-// template_start.php
-$base = '/rendis/'; // com barra no final!
 
-// Se precisar de sessão em todas as páginas que usam o template
+if ($_SERVER['SERVER_NAME'] === 'localhost' || $_SERVER['SERVER_ADDR'] === '127.0.0.1') {
+    $ambiente = 'local';
+} else {
+    $ambiente = 'producao';
+}
+
+if ($ambiente === 'local') {
+    $base = '/rendis/';
+} else {
+    $base = '/';
+}
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Verifica se o usuário está logado
-// Se não estiver logado E a página atual não for a de login, redireciona para o login.
-// Isso evita um loop de redirecionamento.
 $current_page = basename($_SERVER['PHP_SELF']);
 if (!isset($_SESSION['user_id']) && $current_page !== 'login.php') { 
     header('Location: ' . $base . 'login.php'); // Redireciona para a tela de login
