@@ -10,11 +10,13 @@ if (session_status() === PHP_SESSION_NONE) {
 include('../banco.php');
 
 // Define o cabeçalho para retornar JSON
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
+mb_internal_encoding('UTF-8');
+mb_http_output('UTF-8');
 
 // Verifica se o usuário está logado
 if (!isset($_SESSION['user_id'])) {
-    echo json_encode(['sucesso' => false, 'mensagem' => 'Usuário não autenticado. Faça login para acessar o perfil.']);
+    echo json_encode(['sucesso' => false, 'mensagem' => 'Usuário não autenticado. Faça login para acessar o perfil.'], JSON_UNESCAPED_UNICODE);
     exit();
 }
 
@@ -22,13 +24,14 @@ $usuario_id = $_SESSION['user_id']; // Obtém o ID do usuário logado
 
 // Verifica se a conexão com o banco de dados é válida
 if (!isset($conn) || $conn->connect_error) {
-    echo json_encode(['sucesso' => false, 'mensagem' => 'Erro na conexão com o banco de dados: ' . $conn->connect_error]);
+    echo json_encode(['sucesso' => false, 'mensagem' => 'Erro na conexão com o banco de dados: ' . $conn->connect_error], JSON_UNESCAPED_UNICODE);
     exit();
 }
+$conn->set_charset("utf8mb4");
 
 // Verifica se a função foi especificada na requisição
 if (!isset($_REQUEST['funcao']) || empty($_REQUEST['funcao'])) {
-    echo json_encode(['sucesso' => false, 'mensagem' => 'Nenhuma função especificada.']);
+    echo json_encode(['sucesso' => false, 'mensagem' => 'Nenhuma função especificada.'], JSON_UNESCAPED_UNICODE);
     exit();
 }
 
@@ -40,7 +43,7 @@ if ($funcao === 'carregar') {
 } else if ($funcao === 'salvar') {
     salvarUsuario($conn, $usuario_id);
 } else {
-    echo json_encode(['sucesso' => false, 'mensagem' => 'Função inválida: ' . htmlspecialchars($funcao)]);
+    echo json_encode(['sucesso' => false, 'mensagem' => 'Função inválida: ' . htmlspecialchars($funcao)], JSON_UNESCAPED_UNICODE);
     exit();
 }
 
@@ -59,15 +62,15 @@ function carregarUsuario($conn, $usuario_id) {
 
         if ($result->num_rows > 0) {
             $dados = $result->fetch_assoc();
-            echo json_encode(['sucesso' => true, 'dados' => utf8ize($dados)]);
+            echo json_encode(['sucesso' => true, 'dados' => utf8ize($dados)], JSON_UNESCAPED_UNICODE);
         } else {
             // Se o usuário não for encontrado (o que não deveria acontecer se ele está logado),
             // retorna null ou um erro.
-            echo json_encode(['sucesso' => false, 'mensagem' => 'Perfil do usuário não encontrado.']);
+            echo json_encode(['sucesso' => false, 'mensagem' => 'Perfil do usuário não encontrado.'], JSON_UNESCAPED_UNICODE);
         }
         $stmt->close();
     } catch (Exception $e) {
-        echo json_encode(['sucesso' => false, 'mensagem' => 'Erro ao carregar usuário: ' . $e->getMessage()]);
+        echo json_encode(['sucesso' => false, 'mensagem' => 'Erro ao carregar usuário: ' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
     }
 }
 
@@ -85,39 +88,56 @@ function salvarUsuario($conn, $usuario_id) {
 
         // Validação básica dos dados
         if (empty($nome) || !$email || $salario === false || $salario < 0) {
-            echo json_encode(['sucesso' => false, 'mensagem' => 'Dados inválidos ou incompletos. Verifique nome, e-mail e salário.']);
+            echo json_encode(['sucesso' => false, 'mensagem' => 'Dados inválidos ou incompletos. Verifique nome, e-mail e salário.'], JSON_UNESCAPED_UNICODE);
             return;
         }
-        
+
         // Validação do formato da data de nascimento (opcional, mas recomendado)
         if ($nascimento && !DateTime::createFromFormat('Y-m-d', $nascimento)) {
-             echo json_encode(['sucesso' => false, 'mensagem' => 'Formato de data de nascimento inválido. Use YYYY-MM-DD.']);
-             return;
+            echo json_encode(['sucesso' => false, 'mensagem' => 'Formato de data de nascimento inválido. Use YYYY-MM-DD.'], JSON_UNESCAPED_UNICODE);
+            return;
         }
+
+        // Antes de atualizar, busca o salário atual do usuário para verificar se houve mudança
+        $stmtSalario = $conn->prepare("SELECT salario FROM usuarios WHERE id = ?");
+        $stmtSalario->bind_param("i", $usuario_id);
+        $stmtSalario->execute();
+        $resultSalario = $stmtSalario->get_result();
+        $salarioAtual = $resultSalario->fetch_assoc()['salario'];
+        $stmtSalario->close();
 
 
         // Atualiza o perfil do usuário logado
-        // Não é necessário verificar se existe, pois o usuário já existe na tabela 'usuarios'
-        // se ele está logado.
         $stmt = $conn->prepare("UPDATE usuarios SET nome=?, email=?, nascimento=?, salario=? WHERE id=?");
-        
         // 'ssdsi' -> string, string, date(string), double, integer
         $stmt->bind_param("ssdsi", $nome, $email, $nascimento, $salario, $usuario_id);
 
         if ($stmt->execute()) {
+            // Se o salário mudou, deleta o registro do mês atual da tabela de cache para forçar recálculo
+            if (round($salario, 2) != round($salarioAtual, 2)) {
+                $dataAtual = new DateTime();
+                $ano = $dataAtual->format('Y');
+                $mes = $dataAtual->format('m');
+                
+                $stmtDelete = $conn->prepare("DELETE FROM mes_resumo_financeiro WHERE usuario_id = ? AND ano = ? AND mes = ?");
+                $stmtDelete->bind_param('iii', $usuario_id, $ano, $mes);
+                $stmtDelete->execute();
+                $stmtDelete->close();
+            }
+
             if ($stmt->affected_rows > 0) {
-                echo json_encode(['sucesso' => true, 'mensagem' => 'Perfil salvo com sucesso.']);
+                echo json_encode(['sucesso' => true, 'mensagem' => 'Perfil salvo com sucesso.'], JSON_UNESCAPED_UNICODE);
             } else {
                 // Isso pode acontecer se os dados enviados forem idênticos aos já existentes
-                echo json_encode(['sucesso' => true, 'mensagem' => 'Nenhuma alteração feita no perfil.']);
+                echo json_encode(['sucesso' => true, 'mensagem' => 'Nenhuma alteração feita no perfil.'], JSON_UNESCAPED_UNICODE);
             }
         } else {
-            echo json_encode(['sucesso' => false, 'mensagem' => 'Erro ao salvar perfil: ' . $stmt->error]);
+            echo json_encode(['sucesso' => false, 'mensagem' => 'Erro ao salvar perfil: ' . $stmt->error], JSON_UNESCAPED_UNICODE);
         }
 
         $stmt->close();
     } catch (Exception $e) {
-        echo json_encode(['sucesso' => false, 'mensagem' => 'Erro: ' . $e->getMessage()]);
+        echo json_encode(['sucesso' => false, 'mensagem' => 'Erro: ' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
     }
 }
 

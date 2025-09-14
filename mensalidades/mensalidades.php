@@ -4,28 +4,30 @@
     <h2 class="mb-4">Mensalidades Fixas</h2>
 
     <form id="formMensalidade" class="row g-3 mb-4">
+        <input type="hidden" name="id" id="mensalidadeId">
+
         <div class="col-md-4 col-sm-12">
             <label class="form-label">Descrição</label>
-            <input type="text" name="descricao" class="form-control" required>
+            <input type="text" name="descricao" id="descricao" class="form-control" required>
         </div>
 
         <div class="col-md-2 col-sm-12">
             <label class="form-label">Valor (R$)</label>
-            <input type="number" name="valor" step="0.01" class="form-control" required>
+            <input type="number" step="0.01" name="valor" id="valor" class="form-control" required>
         </div>
 
         <div class="col-md-3 col-sm-12">
             <label class="form-label">Início</label>
-            <input type="date" name="inicio" class="form-control" required>
+            <input type="date" name="inicio" id="inicio" class="form-control" required>
         </div>
 
         <div class="col-md-3 col-sm-12">
             <label class="form-label">Duração (meses)</label>
-            <input type="number" name="duracao" class="form-control" required>
+            <input type="number" name="duracao" id="duracao" class="form-control" required>
         </div>
 
         <div class="col-12 d-grid">
-            <button type="submit" class="btn btn-primary">Adicionar Mensalidade</button>
+            <button type="submit" class="btn btn-primary" id="btnSalvar">Adicionar Mensalidade</button>
         </div>
     </form>
 
@@ -34,15 +36,19 @@
             <thead class="table-dark">
                 <tr>
                     <th>Descrição</th>
-                    <th class="d-none d-sm-table-cell">Valor</th> <th class="d-none d-md-table-cell">Início</th> <th class="d-none d-lg-table-cell">Duração</th> <th class="d-none d-lg-table-cell">Fim Estimado</th> <th class="text-end">Ações</th>
+                    <th class="d-none d-sm-table-cell">Valor</th>
+                    <th class="d-none d-md-table-cell">Início</th>
+                    <th class="d-none d-lg-table-cell">Duração</th>
+                    <th class="d-none d-lg-table-cell">Fim Estimado</th>
+                    <th class="text-end">Ações</th>
                 </tr>
             </thead>
-            <tbody>
-            </tbody>
+            <tbody></tbody>
         </table>
     </div>
 </div>
 
+<!-- Modal de Detalhes da Mensalidade -->
 <div class="modal fade" id="modalDetalhesMensalidade" tabindex="-1" aria-labelledby="modalDetalhesMensalidadeLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -58,6 +64,7 @@
                 <p><strong>Fim Estimado:</strong> <span id="modalFimEstimado"></span></p>
                 <hr>
                 <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-primary" id="modalBtnEditar">Editar Mensalidade</button>
                     <button type="button" class="btn btn-danger" id="modalBtnExcluir">Excluir Mensalidade</button>
                 </div>
             </div>
@@ -88,7 +95,7 @@
     function calculaFim(inicio, duracao) {
         let date = new Date(inicio + 'T00:00:00');
         const parsedDuracao = parseInt(duracao);
-        
+
         if (isNaN(date.getTime()) || isNaN(parsedDuracao)) {
             return 'Inválido';
         }
@@ -100,18 +107,24 @@
         }
         return formatDate(date.toISOString().slice(0, 10));
     }
+    
+    function resetForm() {
+        $('#formMensalidade')[0].reset();
+        $('#mensalidadeId').val('');
+        $('#btnSalvar').text('Adicionar Mensalidade');
+    }
 
     function carregarMensalidades() {
         $.ajax({
             url: 'mensalidades_controller.php?funcao=listar',
             type: 'GET',
             dataType: 'json',
-            success: function (data) {
+            success: function(response) {
                 const tbody = $('#tabelaMensalidades tbody');
                 tbody.empty();
 
-                if (data.length > 0) {
-                    data.forEach(row => {
+                if (response.sucesso && response.dados.length > 0) {
+                    response.dados.forEach(row => {
                         const fim = calculaFim(row.inicio, row.duracao);
                         const tr = `
                             <tr data-id="${row.id}"
@@ -126,7 +139,10 @@
                                 <td class="d-none d-lg-table-cell">${row.duracao} meses</td>
                                 <td class="d-none d-lg-table-cell">${fim}</td>
                                 <td class="text-end">
-                                    <button class="btn btn-sm btn-info btn-detalhes d-block d-md-none mb-1">Detalhes</button> <button class="btn btn-sm btn-danger btn-excluir-tabela d-none d-md-inline-block" data-id="${row.id}">Excluir</button> </td>
+                                    <button class="btn btn-sm btn-info btn-detalhes d-block d-md-none mb-1">Detalhes</button>
+                                    <button class="btn btn-sm btn-primary btn-editar-tabela d-none d-md-inline-block me-1">✏️</button>
+                                    <button class="btn btn-sm btn-danger btn-excluir-tabela d-none d-md-inline-block">🗑️</button>
+                                </td>
                             </tr>
                         `;
                         tbody.append(tr);
@@ -142,9 +158,71 @@
         });
     }
 
+    function editarMensalidade(id) {
+        $.ajax({
+            url: 'mensalidades_controller.php?funcao=buscar',
+            type: 'GET',
+            dataType: 'json',
+            data: { id: id },
+            success: function (response) {
+                if (response.sucesso) {
+                    const dados = response.dados;
+                    $('#mensalidadeId').val(dados.id);
+                    $('#descricao').val(dados.descricao);
+                    $('#valor').val(dados.valor);
+                    $('#inicio').val(dados.inicio);
+                    $('#duracao').val(dados.duracao);
+                    $('#btnSalvar').text('Atualizar Mensalidade');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                    Swal.fire('Erro', response.mensagem, 'error');
+                }
+            },
+            error: function (xhr, status, error) {
+                Swal.fire('Erro', 'Não foi possível buscar a mensalidade: ' + error, 'error');
+                console.error("Erro ao buscar mensalidade:", status, error, xhr);
+            }
+        });
+    }
+
+    function excluirMensalidade(id) {
+        Swal.fire({
+            title: 'Deseja realmente excluir esta mensalidade?',
+            text: "Essa ação não pode ser desfeita!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sim, excluir!',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: 'mensalidades_controller.php',
+                    type: 'POST',
+                    dataType: 'json',
+                    data: { funcao: 'deletar', id: id },
+                    success: function (data) {
+                        if (data.sucesso) {
+                            Swal.fire('Excluído!', data.mensagem, 'success');
+                            carregarMensalidades();
+                            resetForm();
+                        } else {
+                            Swal.fire('Erro!', data.mensagem, 'error');
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        Swal.fire('Erro', 'Não foi possível excluir a mensalidade: ' + error, 'error');
+                        console.error("Erro ao excluir mensalidade:", status, error, xhr);
+                    }
+                });
+            }
+        });
+    }
+
     // Event listener para abrir o modal de detalhes
     $('#tabelaMensalidades tbody').on('click', '.btn-detalhes', function() {
-        const rowData = $(this).closest('tr').data(); // Pega todos os data-atributos da linha
+        const rowData = $(this).closest('tr').data();
         
         $('#modalDescricao').text(rowData.descricao);
         $('#modalValor').text(formatCurrency(rowData.valor));
@@ -152,93 +230,63 @@
         $('#modalDuracao').text(rowData.duracao + ' meses');
         $('#modalFimEstimado').text(rowData.fim);
         
-        // Atribui o ID ao botão de exclusão do modal
         $('#modalBtnExcluir').data('id', rowData.id);
+        $('#modalBtnEditar').data('id', rowData.id);
 
         const modal = new bootstrap.Modal(document.getElementById('modalDetalhesMensalidade'));
         modal.show();
     });
 
+    // Event listener para o botão de edição dentro do modal
+    $('#modalBtnEditar').on('click', function() {
+        const id = $(this).data('id');
+        editarMensalidade(id);
+        const modalElement = document.getElementById('modalDetalhesMensalidade');
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if (modal) {
+            modal.hide();
+        }
+    });
+
     // Event listener para o botão de exclusão dentro do modal
     $('#modalBtnExcluir').on('click', function() {
         const id = $(this).data('id');
-        Swal.fire({
-            title: 'Deseja realmente excluir esta mensalidade?',
-            text: "Essa ação não pode ser desfeita!",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Sim, excluir!',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                excluirMensalidade(id);
-                // Fechar o modal após a confirmação de exclusão
-                const modalElement = document.getElementById('modalDetalhesMensalidade');
-                const modal = bootstrap.Modal.getInstance(modalElement);
-                if (modal) {
-                    modal.hide();
-                }
-            }
-        });
+        excluirMensalidade(id);
+        const modalElement = document.getElementById('modalDetalhesMensalidade');
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if (modal) {
+            modal.hide();
+        }
+    });
+
+    // Event listener para o botão de edição da tabela (para desktop)
+    $('#tabelaMensalidades tbody').on('click', '.btn-editar-tabela', function() {
+        const id = $(this).closest('tr').data('id');
+        editarMensalidade(id);
     });
 
     // Event listener para o botão de exclusão da tabela (para desktop)
     $('#tabelaMensalidades tbody').on('click', '.btn-excluir-tabela', function() {
-        const id = $(this).data('id');
-        Swal.fire({
-            title: 'Deseja realmente excluir esta mensalidade?',
-            text: "Essa ação não pode ser desfeita!",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Sim, excluir!',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                excluirMensalidade(id);
-            }
-        });
+        const id = $(this).closest('tr').data('id');
+        excluirMensalidade(id);
     });
-
-    function excluirMensalidade(id) {
-        $.ajax({
-            url: 'mensalidades_controller.php',
-            type: 'POST',
-            dataType: 'json',
-            data: { funcao: 'deletar', id: id },
-            success: function (data) {
-                if (data.sucesso) {
-                    Swal.fire('Excluído!', data.mensagem, 'success');
-                    carregarMensalidades();
-                } else {
-                    Swal.fire('Erro!', data.mensagem, 'error');
-                }
-            },
-            error: function (xhr, status, error) {
-                Swal.fire('Erro', 'Não foi possível excluir a mensalidade: ' + error, 'error');
-                console.error("Erro ao excluir mensalidade:", status, error, xhr);
-            }
-        });
-    }
 
     $('#formMensalidade').on('submit', function(e) {
         e.preventDefault();
 
-        const formData = $(this).serializeArray();
-        formData.push({name: 'funcao', value: 'criar'});
+        const id = $('#mensalidadeId').val();
+        const funcao = id ? 'atualizar' : 'criar';
+        const formData = $(this).serialize() + '&funcao=' + funcao;
 
         $.ajax({
             url: 'mensalidades_controller.php',
             type: 'POST',
             dataType: 'json',
-            data: $.param(formData),
+            data: formData,
             success: function (data) {
                 if (data.sucesso) {
-                    $('#formMensalidade')[0].reset();
                     Swal.fire('Sucesso!', data.mensagem, 'success');
+                    resetForm();
                     carregarMensalidades();
                 } else {
                     Swal.fire('Erro!', data.mensagem, 'error');

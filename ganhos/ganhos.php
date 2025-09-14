@@ -38,8 +38,8 @@
             <thead class="table-success">
                 <tr>
                     <th>Descrição</th>
-                    <th class="d-none d-sm-table-cell">Valor (R$)</th> <!-- Oculta em telas extra-pequenas, visível a partir de sm -->
-                    <th class="d-none d-md-table-cell">Data</th> <!-- Oculta em telas pequenas e extra-pequenas, visível a partir de md -->
+                    <th class="d-none d-sm-table-cell">Valor (R$)</th>
+                    <th class="d-none d-md-table-cell">Data</th>
                     <th class="text-end">Ações</th>
                 </tr>
             </thead>
@@ -62,7 +62,7 @@
                 <p><strong>Data:</strong> <span id="modalGanhoData"></span></p>
                 <hr>
                 <div class="d-grid gap-2">
-                    <button type="button" class="btn btn-primary" id="modalBtnEditarGanho">Editar Ganho</button> <!-- Botão de editar no modal -->
+                    <button type="button" class="btn btn-primary" id="modalBtnEditarGanho">Editar Ganho</button>
                     <button type="button" class="btn btn-danger" id="modalBtnExcluirGanho">Excluir Ganho</button>
                 </div>
             </div>
@@ -149,31 +149,36 @@ function atualizarGanhosMes() {
     const mes = String(dataAtual.getMonth() + 1).padStart(2, '0');
     $('#mesReferencia').text(dataAtual.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }));
 
-    $.getJSON('ganhos_controller.php', { funcao: 'ganhos_mes', ano, mes }, function(ganhos) {
+    // A requisição agora espera um objeto JSON com a chave 'sucesso' e 'dados'
+    $.getJSON('ganhos_controller.php', { funcao: 'ganhos_mes', ano, mes }, function(response) {
         let html = '';
-
-        if (ganhos.length === 0) {
-            html = '<tr><td colspan="4" class="text-muted text-center">Nenhum ganho registrado neste mês.</td></tr>';
+        if (response.sucesso) {
+            const ganhos = response.dados;
+            if (ganhos.length === 0) {
+                html = '<tr><td colspan="4" class="text-muted text-center">Nenhum ganho registrado neste mês.</td></tr>';
+            } else {
+                ganhos.forEach(ganho => {
+                    html += `
+                        <tr data-id="${ganho.id}"
+                            data-descricao="${ganho.descricao}"
+                            data-valor="${ganho.valor}"
+                            data-data="${ganho.data}">
+                            <td>${ganho.descricao}</td>
+                            <td class="d-none d-sm-table-cell">${formatarReal(parseFloat(ganho.valor))}</td>
+                            <td class="d-none d-md-table-cell">${ganho.data}</td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-info btn-detalhes-ganho d-block d-md-none mb-1">Detalhes</button>
+                                <button class="btn btn-sm btn-outline-primary me-1 d-none d-md-inline-block" onclick="editarGanho(${ganho.id})">✏️</button>
+                                <button class="btn btn-sm btn-outline-danger d-none d-md-inline-block" onclick="excluirGanho(${ganho.id})">🗑️</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
         } else {
-            ganhos.forEach(ganho => {
-                html += `
-                    <tr data-id="${ganho.id}"
-                        data-descricao="${ganho.descricao}"
-                        data-valor="${ganho.valor}"
-                        data-data="${ganho.data}">
-                        <td>${ganho.descricao}</td>
-                        <td class="d-none d-sm-table-cell">${formatarReal(parseFloat(ganho.valor))}</td>
-                        <td class="d-none d-md-table-cell">${ganho.data}</td>
-                        <td class="text-end">
-                            <button class="btn btn-sm btn-info btn-detalhes-ganho d-block d-md-none mb-1">Detalhes</button> <!-- Botão visível só em telas pequenas -->
-                            <button class="btn btn-sm btn-outline-primary me-1 d-none d-md-inline-block" onclick="editarGanho(${ganho.id})">✏️</button> <!-- Botão visível só em telas médias+ -->
-                            <button class="btn btn-sm btn-outline-danger d-none d-md-inline-block" onclick="excluirGanho(${ganho.id})">🗑️</button> <!-- Botão visível só em telas médias+ -->
-                        </td>
-                    </tr>
-                `;
-            });
+            Swal.fire('Erro', response.mensagem, 'error');
+            html = `<tr><td colspan="4" class="text-muted text-center">Erro ao carregar ganhos: ${response.mensagem}</td></tr>`;
         }
-
         $('#tabelaGanhosMes tbody').html(html);
     }).fail(() => Swal.fire('Erro', 'Erro ao carregar ganhos do mês.', 'error'));
 }
@@ -185,14 +190,13 @@ function mudarMes(direcao) {
 
 // Event listener para abrir o modal de detalhes do ganho
 $('#tabelaGanhosMes tbody').on('click', '.btn-detalhes-ganho', function() {
-    const rowData = $(this).closest('tr').data(); // Pega todos os data-atributos da linha
+    const rowData = $(this).closest('tr').data();
     
     $('#modalGanhoDescricao').text(rowData.descricao);
     $('#modalGanhoValor').text(formatarReal(rowData.valor));
     $('#modalGanhoData').text(rowData.data);
     
-    // Atribui o ID aos botões de ação do modal
-    $('#modalBtnEditarGanho').data('id', rowData.id); // Atribui ID ao botão de editar
+    $('#modalBtnEditarGanho').data('id', rowData.id);
     $('#modalBtnExcluirGanho').data('id', rowData.id);
 
     const modal = new bootstrap.Modal(document.getElementById('modalDetalhesGanho'));
@@ -202,8 +206,7 @@ $('#tabelaGanhosMes tbody').on('click', '.btn-detalhes-ganho', function() {
 // Event listener para o botão de edição dentro do modal
 $('#modalBtnEditarGanho').on('click', function() {
     const id = $(this).data('id');
-    editarGanho(id); // Chama a função de edição existente
-    // Fechar o modal após iniciar a edição
+    editarGanho(id);
     const modalElement = document.getElementById('modalDetalhesGanho');
     const modal = bootstrap.Modal.getInstance(modalElement);
     if (modal) {
@@ -224,7 +227,6 @@ $('#modalBtnExcluirGanho').on('click', function() {
     }).then((result) => {
         if (result.isConfirmed) {
             excluirGanho(id);
-            // Fechar o modal após a confirmação de exclusão
             const modalElement = document.getElementById('modalDetalhesGanho');
             const modal = bootstrap.Modal.getInstance(modalElement);
             if (modal) {
