@@ -33,11 +33,8 @@ if (!isset($_SESSION['user_id']) && $current_page !== 'login.php') {
     
     <!-- Bootstrap CSS CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" xintegrity="sha384-QWTKZyjpPEjISv5WaRU9O9FvRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <!-- CORRIGIDO: O atributo 'xintegrity' foi alterado para 'integrity' na linha acima. -->
 
-    <!-- Font Awesome CDN para ícones -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" xintegrity="sha512-Fo3rlrZj/k7ujTnHg4CGR2D7kSs0QxZhpcwz/SS0s/j+Q/8i6I/fRPJ+r5z3q+V+L+j+R+r+R+g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <!-- CORRIGIDO: O atributo 'xintegrity' foi alterado para 'integrity' na linha acima. -->
 
     <style>
         /* Variáveis de cores para consistência */
@@ -323,4 +320,6 @@ if (!isset($_SESSION['user_id']) && $current_page !== 'login.php') {
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <!-- Bootstrap JS Bundle CDN -->
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" xintegrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-        <!-- CORRIGIDO: O atributo 'xintegrity' foi alterado para 'integrity' na linha acima. -->
+        <!-- Importação de chart.js para gráficos -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        

@@ -40,12 +40,10 @@
 <div class="container bg-light p-4 rounded shadow-sm">
     <h2 class="mb-5 text-primary text-center">💸 Resumo Financeiro</h2>
     
-    <!-- Carrossel de Meses -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <button class="btn btn-outline-secondary btn-sm" id="prevMonthBtn">←</button>
         <div class="month-card-wrapper d-flex flex-grow-1 mx-2">
-            <!-- Cards de meses serão injetados aqui via JS -->
-        </div>
+            </div>
         <button class="btn btn-outline-secondary btn-sm" id="nextMonthBtn">→</button>
     </div>
 
@@ -62,19 +60,12 @@
         <li class="d-flex justify-content-between py-1 fw-bold">Dinheiro Disponível: <strong id="dinheiroDisponivel">R$ 0,00</strong></li>
     </ul>
 
-    <div class="mt-4">
-        <h4 class="mb-3 text-secondary text-center">🧾 Maiores Gastos do Mês</h4>
-        <table class="table table-striped table-hover shadow-sm" id="tabelaGastosMes">
-            <thead class="table-dark">
-                <tr>
-                    <th>Descrição</th>
-                    <th>Valor</th>
-                    <th>Data</th>
-                    <th class="text-end">Ações</th>
-                </tr>
-            </thead>
-            <tbody id="tabelaGastosMesBody"></tbody>
-        </table>
+    <div class="mt-4 text-center">
+        <h4 class="mb-3 text-secondary">🧾 Maiores Gastos do Mês</h4>
+        <div class="d-flex justify-content-center">
+            <canvas id="graficoGastos" style="max-height: 300px; max-width: 300px;"></canvas>
+        </div>
+        <p class="text-muted small mt-2" id="mensagem-grafico" style="display:none;">Nenhum gasto registrado neste mês.</p>
     </div>
 </div>
 
@@ -84,6 +75,7 @@
     let todasMensalidades = [];
     let salarioAtual = 0;
     let mesAtualIndex = 0;
+    let graficoInstance; // Variável para armazenar a instância do gráfico
 
     const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
@@ -117,32 +109,78 @@
         $('#dinheiroDisponivel').text(formatarReal(resumo.dinheiro_disponivel));
     }
 
-    // Função para atualizar a tabela dos maiores gastos do mês
-    function atualizarGastosMes(ano, mes) {
+    // NOVA FUNÇÃO: Cria ou atualiza o gráfico de gastos
+    function criarGraficoGastos(ano, mes) {
         const gastosDoMes = todosGastos.filter(g => {
             const dataGasto = new Date(g.data);
             return dataGasto.getFullYear() === ano && (dataGasto.getMonth() + 1) === mes;
-        }).sort((a, b) => b.valor - a.valor).slice(0, 5);
+        }).sort((a, b) => b.valor - a.valor);
 
-        let html = '';
+        const canvas = document.getElementById('graficoGastos');
+        const mensagem = document.getElementById('mensagem-grafico');
+
         if (gastosDoMes.length === 0) {
-            html = '<tr><td colspan="4" class="text-muted text-center">Nenhum gasto registrado neste mês.</td></tr>';
-        } else {
-            gastosDoMes.forEach(gasto => {
-                html += `
-                    <tr>
-                        <td>${gasto.descricao}</td>
-                        <td>${formatarReal(parseFloat(gasto.valor))}</td>
-                        <td>${formatDate(gasto.data)}</td>
-                        <td class="text-end">
-                            <button class="btn btn-sm btn-outline-primary me-1" onclick="editarGasto(${gasto.id})" title="Editar">✏️</button>
-                            <button class="btn btn-sm btn-outline-danger" onclick="excluirGasto(${gasto.id})" title="Excluir">🗑️</button>
-                        </td>
-                    </tr>
-                `;
-            });
+            if (graficoInstance) {
+                graficoInstance.destroy();
+            }
+            canvas.style.display = 'none';
+            mensagem.style.display = 'block';
+            return;
         }
-        $('#tabelaGastosMesBody').html(html);
+        
+        canvas.style.display = 'block';
+        mensagem.style.display = 'none';
+
+        const labels = gastosDoMes.map(g => g.descricao);
+        const data = gastosDoMes.map(g => parseFloat(g.valor));
+        const totalGastos = data.reduce((sum, value) => sum + value, 0);
+
+        // Gera uma paleta de cores para todos os gastos
+        const backgroundColors = gastosDoMes.map(() => {
+            const r = Math.floor(Math.random() * 255);
+            const g = Math.floor(Math.random() * 255);
+            const b = Math.floor(Math.random() * 255);
+            return `rgba(${r}, ${g}, ${b}, 0.7)`;
+        });
+
+        if (graficoInstance) {
+            graficoInstance.destroy(); // Destrói a instância anterior do gráfico
+        }
+
+        const ctx = canvas.getContext('2d');
+        graficoInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: backgroundColors,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(tooltipItem) {
+                                let label = tooltipItem.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                const valor = tooltipItem.raw;
+                                const porcentagem = ((valor / totalGastos) * 100).toFixed(2);
+                                label += formatarReal(valor) + ' (' + porcentagem + '%)';
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
     }
     
     // Funções de navegação do carrossel
@@ -163,7 +201,6 @@
         renderizarCardsEMudarDetalhes(mesAtualIndex);
     }
 
-    // Função para renderizar os cards dos meses
     function renderizarCardsEMudarDetalhes(index) {
         const container = $('.month-card-wrapper');
         container.empty();
@@ -184,11 +221,10 @@
         });
         
         atualizarDetalhes(todosResumos[index]);
-        atualizarGastosMes(todosResumos[index].ano, todosResumos[index].mes);
+        criarGraficoGastos(todosResumos[index].ano, todosResumos[index].mes);
         scrollToActiveCard();
     }
     
-    // NOVO: Função para calcular o total de mensalidades ativas em um dado mês/ano
     function calcularMensalidadesAtivas(todasMensalidades, ano, mes) {
         let total = 0;
         const dataReferencia = new Date(ano, mes - 1, 1);
@@ -197,19 +233,15 @@
             const inicio = new Date(m.inicio);
             let fim = new Date(inicio);
             
-            // Calcula a data de término com base na duração
             if (m.duracao > 0) {
                 fim.setMonth(inicio.getMonth() + parseInt(m.duracao));
-                // Ajusta o dia se for um mês com menos dias
                 if (fim.getDate() !== inicio.getDate()) {
-                    fim.setDate(0); // Último dia do mês anterior, que é o mês correto de término
+                    fim.setDate(0);
                 }
             } else {
-                // Mensalidade contínua (duração 0)
                 fim.setFullYear(inicio.getFullYear() + 100); 
             }
 
-            // Verifica se a data de referência está dentro do período de vigência
             if (dataReferencia >= inicio && dataReferencia <= fim) {
                 total += parseFloat(m.valor);
             }
@@ -217,7 +249,6 @@
         return total;
     }
 
-    // Lógica principal de carregamento e cálculo
     function carregarDados() {
         $.ajax({
             url: 'home_controller.php',
@@ -269,7 +300,6 @@
                                                 const anoAtual = hoje.getFullYear();
                                                 const mesAtual = hoje.getMonth() + 1;
                                                 
-                                                // Verifica e adiciona resumos faltantes até o mês atual
                                                 let ultimoMesObj;
                                                 let saldoAnterior;
                                                 
@@ -278,7 +308,7 @@
                                                     ultimoMesObj = new Date(ultimoResumo.ano, ultimoResumo.mes, 1);
                                                     saldoAnterior = parseFloat(ultimoResumo.dinheiro_disponivel);
                                                 } else {
-                                                    ultimoMesObj = new Date(anoAtual, mesAtual, 1); // Começa a partir do mês atual, se não houver histórico
+                                                    ultimoMesObj = new Date(anoAtual, mesAtual, 1);
                                                     saldoAnterior = 0;
                                                 }
 
@@ -312,7 +342,6 @@
                                                     saldoAnterior = novoSaldo;
                                                 }
                                                 
-                                                // Projeta os próximos 12 meses
                                                 ultimoResumo = todosResumos.length > 0 ? todosResumos[todosResumos.length - 1] : novoResumo;
                                                 let ultimoMesObjProj = new Date(ultimoResumo.ano, ultimoResumo.mes - 1, 1);
                                                 let ultimoSaldoProj = parseFloat(ultimoResumo.dinheiro_disponivel);
