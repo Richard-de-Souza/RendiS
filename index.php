@@ -128,49 +128,53 @@
         });
     </script>
 </head>
-<body class="bg-gradient-to-r from-blue-500 to-purple-600 min-h-screen flex items-center justify-center font-sans p-4">
-    <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
-        <h1 id="authTitle" class="text-3xl font-bold text-center text-gray-800 mb-8">Fazer Login</h1>
+<body class="bg-gray-100 dark:bg-gray-900 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl w-full max-w-sm border border-gray-200 dark:border-gray-700">
+        <h1 id="authTitle" class="text-3xl font-extrabold text-center text-gray-900 dark:text-white mb-8">
+            Fazer Login
+        </h1>
 
-        <!-- Formulário de Login -->
-        <form id="loginForm" class="space-y-6">
+        <form id="loginForm" class="space-y-6" aria-labelledby="authTitle">
             <div>
-                <label for="loginEmail" class="block text-gray-700 text-sm font-bold mb-2">E-mail</label>
-                <input type="email" id="loginEmail" name="email" class="shadow appearance-none border rounded-xl w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="seuemail@exemplo.com" required>
+                <label for="loginEmail" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">E-mail</label>
+                <input type="email" id="loginEmail" name="email" class="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150" placeholder="seuemail@exemplo.com" required>
             </div>
             <div>
-                <label for="loginPassword" class="block text-gray-700 text-sm font-bold mb-2">Senha</label>
-                <input type="password" id="loginPassword" name="password" class="shadow appearance-none border rounded-xl w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="********" required>
+                <label for="loginPassword" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Senha</label>
+                <input type="password" id="loginPassword" name="password" class="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150" placeholder="********" required>
             </div>
             <div class="flex items-center justify-between">
-                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl focus:outline-none focus:shadow-outline transition duration-200 ease-in-out transform hover:scale-105 w-full">Entrar</button>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition duration-200 ease-in-out">
+                    Entrar
+                </button>
             </div>
-            <p class="text-center text-gray-600 text-sm mt-4">
-                Não tem uma conta? <a href="#" id="toggleToRegister" class="text-blue-600 hover:text-blue-800 font-bold">Crie uma aqui!</a>
+            <p class="text-center text-sm text-gray-600 dark:text-gray-400 mt-4">
+                Não tem uma conta? <a href="#" id="toggleToRegister" class="text-blue-600 hover:text-blue-800 dark:text-blue-500 dark:hover:text-blue-400 font-bold">Crie uma aqui!</a>
             </p>
         </form>
 
-        <!-- Formulário de Registro (inicialmente oculto) -->
-        <form id="registerForm" class="space-y-6 hidden">
+        <form id="registerForm" class="space-y-6 hidden" aria-labelledby="authTitle">
             <div>
-                <label for="registerEmail" class="block text-gray-700 text-sm font-bold mb-2">E-mail</label>
-                <input type="email" id="registerEmail" name="email" class="shadow appearance-none border rounded-xl w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="seuemail@exemplo.com" required>
+                <label for="registerEmail" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">E-mail</label>
+                <input type="email" id="registerEmail" name="email" class="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150" placeholder="seuemail@exemplo.com" required>
             </div>
             <div>
-                <label for="registerPassword" class="block text-gray-700 text-sm font-bold mb-2">Senha</label>
-                <input type="password" id="registerPassword" name="password" class="shadow appearance-none border rounded-xl w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="********" required>
-                <p class="text-xs text-gray-500 mt-1">Mínimo de 6 caracteres.</p>
+                <label for="registerPassword" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Senha</label>
+                <input type="password" id="registerPassword" name="password" class="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150" placeholder="********" required>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Mínimo de 6 caracteres.</p>
             </div>
             <div class="flex items-center justify-between">
-                <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-xl focus:outline-none focus:shadow-outline transition duration-200 ease-in-out transform hover:scale-105 w-full">Registrar</button>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition duration-200 ease-in-out">
+                    Registrar
+                </button>
             </div>
-            <p class="text-center text-gray-600 text-sm mt-4">
-                Já tem uma conta? <a href="#" id="toggleToLogin" class="text-purple-600 hover:text-purple-800 font-bold">Faça login aqui!</a>
+            <p class="text-center text-sm text-gray-600 dark:text-gray-400 mt-4">
+                Já tem uma conta? <a href="#" id="toggleToLogin" class="text-blue-600 hover:text-blue-800 dark:text-blue-500 dark:hover:text-blue-400 font-bold">Faça login aqui!</a>
             </p>
         </form>
 
-        <div id="authStatus" class="mt-6 p-4 bg-gray-100 rounded-lg text-center text-sm">
-            <p class="text-gray-600 font-semibold">Status: Não autenticado (via banco de dados).</p>
+        <div id="authStatus" class="mt-6 p-4 bg-gray-100 dark:bg-gray-700 rounded-xl text-center text-sm border border-gray-200 dark:border-gray-600">
+            <p class="text-gray-700 dark:text-gray-300 font-semibold">Status: Não autenticado (via banco de dados).</p>
         </div>
     </div>
 </body>
