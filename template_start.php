@@ -29,7 +29,7 @@ if (!isset($_SESSION['user_id']) && $current_page !== 'login.php') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Controle de Investimentos</title>
 
-    <link rel="icon" type="image/png" href="img/iconeRendis.png">
+    <link rel="icon" type="image/png" href="<?= $base ?>img/iconeRendis.png">
     
     <!-- Bootstrap CSS CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" xintegrity="sha384-QWTKZyjpPEjISv5WaRU9O9FvRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
