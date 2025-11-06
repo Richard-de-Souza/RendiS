@@ -159,7 +159,7 @@
 
     function atualizarGastosMes() {
         const ano = dataAtual.getFullYear();
-        const mes = String(dataAtual.getMonth() + 1).padStart(2, '0'); // Mês de 1 a 12
+        const mes = String(dataAtual.getMonth() + 1).padStart(1);
 
         $('#mesReferencia').text(dataAtual.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }));
 
@@ -170,7 +170,19 @@
             dataType: 'json',
             success: function(res) {
                 let html = '';
-                const gastos = res; // Como gastosMes no controller retorna apenas o array de dados, 'res' aqui já é o array de gastos.
+                
+                // --- INÍCIO DA CORREÇÃO ---
+                let gastos = [];
+
+                if (res.sucesso) {
+                    gastos = res.dados; // Pega o array de gastos da chave 'dados'
+                } else {
+                    console.error("Erro no controller:", res.mensagem);
+                    Swal.fire('Erro', res.mensagem, 'error');
+                    $('#tabelaGastosMes tbody').html('<tr><td colspan="4" class="text-danger text-center">Erro ao carregar dados: ' + res.mensagem + '</td></tr>');
+                    return; // Sai da função em caso de erro
+                }
+                // --- FIM DA CORREÇÃO ---
 
                 if(gastos.length === 0) {
                     html = '<tr><td colspan="4" class="text-muted text-center">Nenhum gasto registrado neste mês.</td></tr>';
@@ -185,9 +197,9 @@
                                 <td class="d-none d-sm-table-cell">${formatarReal(parseFloat(gasto.valor))}</td>
                                 <td class="d-none d-md-table-cell">${gasto.data}</td>
                                 <td class="text-end">
-                                    <button class="btn btn-sm btn-info btn-detalhes-gasto d-block d-md-none mb-1">Detalhes</button> <!-- Botão visível só em telas pequenas -->
-                                    <button class="btn btn-sm btn-outline-primary me-1 d-none d-md-inline-block" onclick="editarGasto(${gasto.id})">✏️</button> <!-- Botão visível só em telas médias+ -->
-                                    <button class="btn btn-sm btn-outline-danger d-none d-md-inline-block" onclick="excluirGasto(${gasto.id})">🗑️</button> <!-- Botão visível só em telas médias+ -->
+                                    <button class="btn btn-sm btn-info btn-detalhes-gasto d-block d-md-none mb-1">Detalhes</button>
+                                    <button class="btn btn-sm btn-outline-primary me-1 d-none d-md-inline-block" onclick="editarGasto(${gasto.id})">✏️</button>
+                                    <button class="btn btn-sm btn-outline-danger d-none d-md-inline-block" onclick="excluirGasto(${gasto.id})">🗑️</button>
                                 </td>
                             </tr>
                         `;
