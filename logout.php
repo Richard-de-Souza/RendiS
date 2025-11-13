@@ -21,9 +21,18 @@ if (ini_get("session.use_cookies")) {
 
 // Finalmente, destrói a sessão.
 session_destroy();
+if ($_SERVER['SERVER_NAME'] === 'localhost' || $_SERVER['SERVER_ADDR'] === '127.0.0.1') {
+    $ambiente = 'local';
+} else {
+    $ambiente = 'producao';
+}
 
-// Redireciona para a página de login
-$base = '/rendis/'; // Certifique-se de que esta variável $base corresponde à do seu template_start.php
+if ($ambiente === 'local') {
+    $base = '/rendis/';
+} else {
+    $base = '/';
+}
+
 header('Location: ' . $base . 'index.php');
 exit();
 ?>
